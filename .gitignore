@@ -1,0 +1,48 @@
+.byebug_history
+*tmp
+dd*
+satei*
+ALP*
+~*
+**/*.swp
+**/*.patch
+**/*lnk
+./*docx
+*.gem
+cleanup
+
+#these files are for testing
+reasons.yml
+/.bundle
+
+# Ignore the default SQLite database.
+/db/*.sqlite3
+
+# Ignore all logfiles and tempfiles.
+/log/*.log
+/tmp
+**/*.swp
+/config/secret.yml
+/bin/rails
+/bin/bundle
+/bin/rake
+/bin/setup
+/bin/spring
+/config/database.yml
+/config/templates/*
+**/*bz2
+NOTES
+*.capistrano
+
+#ignore OAダウンロード済みフォルダー
+config/oadownloads/
+
+/public/packs
+/public/packs-test
+/node_modules
+/yarn-error.log
+yarn-debug.log*
+.yarn-integrity
+
+**/*xlsx
+dump.go
