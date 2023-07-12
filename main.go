@@ -1,5 +1,9 @@
 package main
 
+// by James Rubingh
+// Compare Invoices and Shuhos for mismatching case numbers,
+// mismatching dates, etc.
+
 import (
 	"fmt"
 	"os"
@@ -8,6 +12,15 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+type CaseEntry interface {
+	//give an ID signature for the entry (casenumber + date + wordcount + type)
+	Identify() string
+
+	//give only the casenumber for the entry
+	Casenumber() string
+}
+
+//create InvoiceEntry for each Invoice row, and methods implementing interfaces
 type InvoiceEntry struct {
 	rowNum     string
 	IDate      string
@@ -17,13 +30,41 @@ type InvoiceEntry struct {
 	rate       string
 }
 
+//implement CaseEntry interface
+func (i InvoiceEntry) Identify() string {
+	return fmt.Sprintf("Case: %s, Type: %s, Date: %s, Word Count: %s", i.ICaseNum, i.IType, i.IDate, i.IWordCount)
+}
+
+func (i InvoiceEntry) Casenumber() string {
+	return i.ICaseNum
+}
+
+//implement Stringer interface
+func (i InvoiceEntry) String() string {
+	return fmt.Sprintf("Date: %s, Case: %s, Type: %s", i.IDate, i.ICaseNum, i.IType)
+}
+
+//create ShuhoEntry for each Invoice row, and methods implementing interfaces
 type ShuhoEntry struct {
-	SDate       string
-	SCaseNum    string
-	SType       string
-	STWordCount string
-	SCWordCount string
-	SAuthor     string
+	SDate      string
+	SCaseNum   string
+	SType      string
+	SWordCount string
+	SAuthor    string
+}
+
+//implement CaseEntry interface
+func (i ShuhoEntry) Identify() string {
+	return fmt.Sprintf("Case: %s, Type: %s, Date: %s, Word Count: %s", i.SCaseNum, i.SType, i.SDate, i.SWordCount)
+}
+
+func (i ShuhoEntry) Casenumber() string {
+	return i.SCaseNum
+}
+
+//implement Stringer interface
+func (i ShuhoEntry) String() string {
+	return i.Identify()
 }
 
 func greeting() {
@@ -46,8 +87,8 @@ func main() {
 
 	greeting()
 
-	fshuho, err := excelize.OpenFile(shuhoFileName)
-	finvoice, err := excelize.OpenFile(invoiceFileName)
+	fshuho, err_s := excelize.OpenFile(shuhoFileName)
+	finvoice, err_i := excelize.OpenFile(invoiceFileName)
 	defer func() {
 		// Close the invoice spreadsheet.
 		if err := finvoice.Close(); err != nil {
@@ -59,8 +100,12 @@ func main() {
 		}
 	}()
 
-	if err != nil {
-		fmt.Println("ERROR:", err)
+	if err_s != nil {
+		fmt.Println("ERROR Shuho File:", err_s)
+		return
+	}
+	if err_i != nil {
+		fmt.Println("ERROR Invoice File::", err_s)
 		return
 	}
 
@@ -72,16 +117,18 @@ func main() {
 		return
 	}
 
+	fmt.Println("Shuho Entries:")
+	for _, entry := range shuhoEntries {
+		fmt.Printf("%s\n", entry.Identify())
+	}
+
+	fmt.Println("Invoice Entries:")
 	for _, entry := range invoiceEntries {
-		fmt.Printf("%s\n", invoiceEntryToString(entry))
+		fmt.Printf("%s\n", entry.Identify())
 	}
 
 	fmt.Println("fin")
 	return
-}
-
-func invoiceEntryToString(ie InvoiceEntry) string {
-	return fmt.Sprintf("%s %s %s %s %s", ie.rowNum, ie.ICaseNum, ie.IType, ie.IWordCount, ie.rate)
 }
 
 func parseInvoice(f *excelize.File) []InvoiceEntry {
