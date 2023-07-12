@@ -195,7 +195,66 @@ func parseShuho(f *excelize.File) []ShuhoEntry {
 	entries := []ShuhoEntry{}
 
 	for index, name := range f.GetSheetList() {
-		fmt.Println("SHUHO SHEET NAME", index, name)
+		fmt.Println("INVOICE SHEET NAME", index, name)
+		sheetName := name
+
+		rows, err := f.Rows(sheetName)
+		if err != nil {
+			fmt.Println(err)
+			return entries
+		}
+
+		if rows == nil {
+			fmt.Println("No Rows")
+			return entries
+		}
+
+		for rows.Next() {
+			var se ShuhoEntry
+			row, err := rows.Columns()
+
+			fmt.Println(row)
+
+			if err != nil {
+				fmt.Println(err)
+				return entries
+			}
+
+			//no row
+			if row == nil || len(row) < 5 {
+				continue
+			}
+
+			//check for a date, then check that the case doesnt' include x
+			regres, err := regexp.Match("\\d+/\\d+$", []byte(row[0]))
+			if err != nil {
+				fmt.Println(err)
+				return entries
+			}
+			regres2, err2 := regexp.Match("^x", []byte(row[0]))
+			if err2 != nil {
+				fmt.Println(err2)
+				return entries
+			}
+
+			//first column cell is not a date string e.g. 6/20
+			if !regres || regres2 {
+				continue
+			}
+
+			if len(row) > 5 {
+				se.SDate = row[0]
+				se.SCaseNum = row[1]
+				se.SType = row[2]
+				se.SWordCount = row[4]
+				se.SAuthor = row[6]
+				//		fmt.Printf("%s\n", row)
+			}
+
+			fmt.Println("raw row", row)
+
+			entries = append(entries, se)
+		}
 	}
 
 	return entries
