@@ -73,6 +73,10 @@ func greeting() {
 	fmt.Println("------------------------\n")
 }
 
+func countEntries(entries []CaseEntry) int {
+	return len(entries)
+}
+
 func main() {
 	if len(os.Args[1:]) != 2 {
 		fmt.Println("ERROR Usage: ./verifyshuho <Shuho.xlsx> <Invoice.xlsx>")
@@ -126,6 +130,9 @@ func main() {
 	for _, entry := range invoiceEntries {
 		fmt.Printf("%s\n", entry.Identify())
 	}
+
+	fmt.Printf("Number of Invoices: %d\n", countEntries(invoiceEntries))
+	fmt.Printf("Number of Shuhos: %d\n", countEntries(shuhoEntries))
 
 	fmt.Println("fin")
 	return
@@ -250,8 +257,6 @@ func parseShuho(f *excelize.File) []ShuhoEntry {
 				se.SAuthor = row[6]
 				//		fmt.Printf("%s\n", row)
 			}
-
-			fmt.Println("raw row", row)
 
 			entries = append(entries, se)
 		}
