@@ -17,6 +17,10 @@ type InvoiceEntry struct {
 	rate       string
 }
 
+func (e InvoiceEntry) String() string {
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s,", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
+}
+
 type ShuhoEntry struct {
 	SDate       string
 	SCaseNum    string
@@ -26,10 +30,14 @@ type ShuhoEntry struct {
 	SAuthor     string
 }
 
+func (e ShuhoEntry) String() string {
+	return fmt.Sprintf("%s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, e.SAuthor)
+}
+
 func greeting() {
 	fmt.Println("------------------------")
 	fmt.Println("Verify Shuho and Invoice")
-	fmt.Println("------------------------\n")
+	fmt.Println("------------------------")
 }
 
 func main() {
@@ -47,7 +55,15 @@ func main() {
 	greeting()
 
 	fshuho, err := excelize.OpenFile(shuhoFileName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	finvoice, err := excelize.OpenFile(invoiceFileName)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 	defer func() {
 		// Close the invoice spreadsheet.
 		if err := finvoice.Close(); err != nil {
@@ -73,15 +89,10 @@ func main() {
 	}
 
 	for _, entry := range invoiceEntries {
-		fmt.Printf("%s\n", invoiceEntryToString(entry))
+		fmt.Printf("%s\n", entry)
 	}
 
 	fmt.Println("fin")
-	return
-}
-
-func invoiceEntryToString(ie InvoiceEntry) string {
-	return fmt.Sprintf("%s %s %s %s %s", ie.rowNum, ie.ICaseNum, ie.IType, ie.IWordCount, ie.rate)
 }
 
 func parseInvoice(f *excelize.File) []InvoiceEntry {
