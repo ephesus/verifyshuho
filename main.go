@@ -115,6 +115,11 @@ func parseInvoice(f *excelize.File) []InvoiceEntry {
 		return entries
 	}
 
+	dateRe := regexp.MustCompile(`\d+-\d+-\d+$`)
+	if err != nil {
+		return entries
+	}
+
 	for rows.Next() {
 		var ie InvoiceEntry
 		row, err := rows.Columns()
@@ -128,7 +133,7 @@ func parseInvoice(f *excelize.File) []InvoiceEntry {
 			continue
 		}
 
-		regres, err := regexp.Match("\\d+-\\d+-\\d+$", []byte(row[3]))
+		regres := dateRe.Match([]byte(row[3]))
 		if err != nil {
 			fmt.Println(err)
 			return entries
