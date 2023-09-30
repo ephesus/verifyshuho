@@ -132,6 +132,10 @@ func parseInvoice(f *excelize.File) []InvoiceEntry {
 		if row == nil || len(row) < 5 {
 			continue
 		}
+		//not a complete row
+		if rowNotComplete(row) {
+			continue
+		}
 
 		regres := dateRe.Match([]byte(row[3]))
 		if err != nil {
@@ -158,6 +162,19 @@ func parseInvoice(f *excelize.File) []InvoiceEntry {
 	}
 
 	return entries
+}
+
+// make sure that the row has required fields
+func rowNotComplete(row []string) bool {
+	//check that each field has a value
+	if (row[0] == "") || (row[3] == "") || (row[1] == "") || (row[2] == "") || (row[4] == "") || (row[5] == "") {
+		return true
+	}
+
+	//check for default casenum "ALP-"
+	match, _ := regexp.MatchString(`^ALP-$`, row[1])
+	//must be last
+	return match
 }
 
 func parseShuho(f *excelize.File) []ShuhoEntry {
