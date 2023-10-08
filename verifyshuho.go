@@ -35,37 +35,46 @@ func (e InvoiceEntry) signature() string {
 }
 
 func (e InvoiceEntry) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s, %s, %s,", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
 }
 
 type ShuhoEntry struct {
 	SDate       string
 	SCaseNum    string
 	SType       string
-	STWordCount string
 	SCWordCount string
+	STWordCount string
 	SAuthor     string
 }
 
-// stuct methods
-func (e ShuhoEntry) signature() string {
+func getShuhoEntryWordCount(e ShuhoEntry) string {
 	var wordcount string
 
 	switch e.SType {
 	case "翻訳":
 		wordcount = e.STWordCount
-	case "英チェック":
+	case "英文チェック":
 		wordcount = e.SCWordCount
 	default:
 		//should never happen, the excel file restricts to the two above values
+		fmt.Printf("NOTE: %s - %s, %s\n", e.SType, e.SDate, e.SCaseNum)
 		wordcount = "UNKNOWN"
 	}
+
+	return wordcount
+}
+
+// stuct methods
+func (e ShuhoEntry) signature() string {
+	wordcount := getShuhoEntryWordCount(e)
 
 	return fmt.Sprintf("%s %s %s %s", e.SDate, e.SCaseNum, e.SType, wordcount)
 }
 
 func (e ShuhoEntry) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, e.SAuthor)
+	wordcount := getShuhoEntryWordCount(e)
+
+	return fmt.Sprintf("%s, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
 }
 
 // print error for structs satisfying Entry interface
@@ -89,8 +98,8 @@ func main() {
 	shuhoFileName := os.Args[1]
 	invoiceFileName := os.Args[2]
 
-	var shuhoEntries []ShuhoEntry
-	var invoiceEntries []InvoiceEntry
+	var shuhoEntries []Entry
+	var invoiceEntries []Entry
 
 	greeting()
 
@@ -132,14 +141,24 @@ func main() {
 		fmt.Printf("%s\n", entry)
 	}
 
+	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
 	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
+
+	//	printAllEntries(shuhoEntries)
+
 	fmt.Println("fin")
+	//main
 }
 
-//main
+//	printAllEntries(shuhoEntries)
+func printAllEntries(entries []Entry) {
+	for index, entry := range entries {
+		fmt.Printf("%d: %s\n", index, entry.String())
+	}
+}
 
-func parseInvoice(f *excelize.File) []InvoiceEntry {
-	entries := make([]InvoiceEntry, 0, 40)
+func parseInvoice(f *excelize.File) []Entry {
+	entries := make([]Entry, 0, 40)
 	var sheetName string
 
 	for index, name := range f.GetSheetList() {
@@ -221,8 +240,8 @@ func rowNotComplete(row []string) bool {
 	return match
 }
 
-func parseShuho(f *excelize.File) []ShuhoEntry {
-	entries := make([]ShuhoEntry, 0, 500)
+func parseShuho(f *excelize.File) []Entry {
+	entries := make([]Entry, 0, 500)
 
 	for index, name := range f.GetSheetList() {
 		//fmt.Println("SHUHO SHEET NAME", index, name)
@@ -266,8 +285,20 @@ func parseShuho(f *excelize.File) []ShuhoEntry {
 				continue
 			}
 
+			/*
+				fmt.Printf("debug:")
+				for index, val := range row {
+					fmt.Printf("%d - %s\n", index, val)
+				}
+			*/
+
+			match, _ := regexp.MatchString(`^(?i)\d+/\d+$`, row[0])
+			if !match {
+				continue
+			}
+
 			//check for default casenum "ALP-"
-			match, _ := regexp.MatchString(`^(?i)ALP-$`, row[1])
+			match, _ = regexp.MatchString(`^(?i)ALP-$`, row[1])
 			if match {
 				continue
 			}
@@ -275,8 +306,8 @@ func parseShuho(f *excelize.File) []ShuhoEntry {
 			se.SDate = row[0]
 			se.SCaseNum = row[1]
 			se.SType = row[2]
-			se.STWordCount = row[3]
-			se.SCWordCount = row[4]
+			se.SCWordCount = row[3]
+			se.STWordCount = row[4]
 			se.SAuthor = row[5]
 
 			entries = append(entries, se)
