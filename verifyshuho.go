@@ -227,6 +227,7 @@ func parseShuho(f *excelize.File) []ShuhoEntry {
 	for index, name := range f.GetSheetList() {
 		//fmt.Println("SHUHO SHEET NAME", index, name)
 
+		//skip the first "template" sheet in the file
 		if index == 0 {
 			continue
 		}
@@ -252,12 +253,22 @@ func parseShuho(f *excelize.File) []ShuhoEntry {
 			}
 
 			//no row
-			if row == nil || len(row) < 5 {
+			if row == nil || len(row) < 6 {
 				continue
 			}
 
-			if rowNotComplete(row) {
-				fmt.Printf("%s, %s, %s, %s, %s, %s\n", row[0], row[1], row[2], row[3], row[4], row[5])
+			//check that 0, 1, 2, and 6 have a value, and that 3 OR 4 has a wordcount
+			if (row[0] == "") || (row[1] == "") || (row[2] == "") || (row[6] == "") {
+				continue
+			}
+
+			if (row[3] == "") && (row[4] == "") {
+				continue
+			}
+
+			//check for default casenum "ALP-"
+			match, _ := regexp.MatchString(`^(?i)ALP-$`, row[1])
+			if match {
 				continue
 			}
 
