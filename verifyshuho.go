@@ -14,6 +14,12 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
+// entry signatures are Date, Casenum, Type, Wordcount
+type Entry interface {
+	signature() string
+	String() string
+}
+
 type InvoiceEntry struct {
 	rowNum     string
 	IDate      string
@@ -21,6 +27,11 @@ type InvoiceEntry struct {
 	IType      string
 	IWordCount string
 	rate       string
+}
+
+// stuct methods
+func (e InvoiceEntry) signature() string {
+	return fmt.Sprintf("%s %s %s %s", e.IDate, e.ICaseNum, e.IType, e.IWordCount)
 }
 
 func (e InvoiceEntry) String() string {
@@ -36,8 +47,31 @@ type ShuhoEntry struct {
 	SAuthor     string
 }
 
+// stuct methods
+func (e ShuhoEntry) signature() string {
+	var wordcount string
+
+	switch e.SType {
+	case "翻訳":
+		wordcount = e.STWordCount
+	case "英チェック":
+		wordcount = e.SCWordCount
+	default:
+		//should never happen, the excel file restricts to the two above values
+		wordcount = "UNKNOWN"
+	}
+
+	return fmt.Sprintf("%s %s %s %s", e.SDate, e.SCaseNum, e.SType, wordcount)
+}
+
 func (e ShuhoEntry) String() string {
 	return fmt.Sprintf("%s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, e.SAuthor)
+}
+
+// print error for structs satisfying Entry interface
+func printEntryError(e Entry) {
+	fmt.Printf("Error: %s\n", e.String())
+	os.Exit(1)
 }
 
 func greeting() {
@@ -86,8 +120,8 @@ func main() {
 		return
 	}
 
-	shuhoEntries = parseShuho(fshuho)
 	invoiceEntries = parseInvoice(finvoice)
+	shuhoEntries = parseShuho(fshuho)
 
 	if shuhoEntries == nil || invoiceEntries == nil {
 		fmt.Println("Empty Shuho or Invoice Entries variable")
@@ -98,11 +132,14 @@ func main() {
 		fmt.Printf("%s\n", entry)
 	}
 
+	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
 	fmt.Println("fin")
 }
 
+//main
+
 func parseInvoice(f *excelize.File) []InvoiceEntry {
-	entries := []InvoiceEntry{}
+	entries := make([]InvoiceEntry, 0, 40)
 	var sheetName string
 
 	for index, name := range f.GetSheetList() {
@@ -138,7 +175,7 @@ func parseInvoice(f *excelize.File) []InvoiceEntry {
 		if row == nil || len(row) < 5 {
 			continue
 		}
-		//not a complete row
+		//not a complete row, placeholder in excel file
 		if rowNotComplete(row) {
 			continue
 		}
@@ -185,10 +222,54 @@ func rowNotComplete(row []string) bool {
 }
 
 func parseShuho(f *excelize.File) []ShuhoEntry {
-	entries := []ShuhoEntry{}
+	entries := make([]ShuhoEntry, 0, 500)
 
 	for index, name := range f.GetSheetList() {
-		fmt.Println("SHUHO SHEET NAME", index, name)
+		//fmt.Println("SHUHO SHEET NAME", index, name)
+
+		if index == 0 {
+			continue
+		}
+
+		rows, err := f.Rows(name)
+		if err != nil {
+			fmt.Println(err)
+			return entries
+		}
+
+		if rows == nil {
+			fmt.Printf("ERROR: Sheet %s (%d) - No Rows", name, index)
+			return entries
+		}
+
+		for rows.Next() {
+			var se ShuhoEntry
+
+			row, err := rows.Columns()
+			if err != nil {
+				fmt.Println(err)
+				return entries
+			}
+
+			//no row
+			if row == nil || len(row) < 5 {
+				continue
+			}
+
+			if rowNotComplete(row) {
+				fmt.Printf("%s, %s, %s, %s, %s, %s\n", row[0], row[1], row[2], row[3], row[4], row[5])
+				continue
+			}
+
+			se.SDate = row[0]
+			se.SCaseNum = row[1]
+			se.SType = row[2]
+			se.STWordCount = row[3]
+			se.SCWordCount = row[4]
+			se.SAuthor = row[5]
+
+			entries = append(entries, se)
+		}
 	}
 
 	return entries
