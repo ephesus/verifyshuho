@@ -172,7 +172,8 @@ func rowNotComplete(row []string) bool {
 	}
 
 	//check for default casenum "ALP-"
-	match, _ := regexp.MatchString(`^ALP-$`, row[1])
+	match, _ := regexp.MatchString(`^(?i)ALP-$`, row[1])
+
 	//must be last
 	return match
 }
