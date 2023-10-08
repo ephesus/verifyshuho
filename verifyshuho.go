@@ -1,3 +1,9 @@
+/*
+	Go program to verify my Shuho and Invoice excel files for work
+	by James Rubingh
+	james@wrive.com 2023
+*/
+
 package main
 
 import (
