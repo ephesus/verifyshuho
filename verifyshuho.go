@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -19,6 +20,7 @@ type Entry interface {
 	signature() string
 	String() string
 	Type() string
+	Date() string
 }
 
 type InvoiceEntry struct {
@@ -37,6 +39,10 @@ func (e InvoiceEntry) signature() string {
 
 func (e InvoiceEntry) String() string {
 	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
+}
+
+func (e InvoiceEntry) Date() string {
+	return e.IDate
 }
 
 func (e InvoiceEntry) Type() string {
@@ -80,6 +86,10 @@ func (e ShuhoEntry) String() string {
 	wordcount := getShuhoEntryWordCount(e)
 
 	return fmt.Sprintf("%s, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
+}
+
+func (e ShuhoEntry) Date() string {
+	return e.SDate
 }
 
 func (e ShuhoEntry) Type() string {
@@ -149,10 +159,11 @@ func main() {
 	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
 	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
 	fmt.Println("")
-	fmt.Printf("Total Translations: %d\n", sum_of_translations(invoiceEntries))
-	fmt.Printf("Total Checks: %d\n", sum_of_checks(invoiceEntries))
+	fmt.Printf("Total Translations: %d\n", sumOfTranslations(invoiceEntries))
+	fmt.Printf("Total Checks: %d\n", sumOfChecks(invoiceEntries))
 
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
+	ensureInvoiceEntriesAreInShuho(invoiceEntries)
 
 	//main
 }
@@ -163,6 +174,28 @@ func printAllEntries(entries []Entry) {
 	for index, entry := range entries {
 		fmt.Printf("%d: %s\n", index, entry.String())
 	}
+}
+
+func ensureInvoiceEntriesAreInShuho(entries []Entry) {
+
+	for _, entry := range entries {
+		entryDate := getDate(entry.Date())
+		fmt.Println(entryDate)
+	}
+}
+
+func getDate(eDate string) time.Time {
+	entryDate, err := time.Parse("01-02-06", eDate)
+
+	if err != nil {
+		entryDate, err = time.Parse("1/2", eDate)
+		if err != nil {
+			fmt.Printf("ERROR: Invalid Date %s", eDate)
+			os.Exit(2)
+		}
+	}
+
+	return entryDate
 }
 
 func ensureNoDuplicateInvoiceEntries(entries []Entry) {
@@ -184,7 +217,7 @@ func ensureNoDuplicateInvoiceEntries(entries []Entry) {
 	}
 }
 
-func sum_of_checks(entries []Entry) int {
+func sumOfChecks(entries []Entry) int {
 	var total int
 
 	for _, entry := range entries {
@@ -196,7 +229,7 @@ func sum_of_checks(entries []Entry) int {
 	return total
 }
 
-func sum_of_translations(entries []Entry) int {
+func sumOfTranslations(entries []Entry) int {
 	var total int
 
 	for _, entry := range entries {
@@ -291,7 +324,7 @@ func checkForEmptyCase(caseField string) bool {
 	return match && (caseField == "")
 }
 
-//only words for shuho entires x/x format
+// only words for shuho entires x/x format
 func checkForValidDate(dateField string) bool {
 	match, _ := regexp.MatchString(`^(?i)\d+/\d+$`, dateField)
 
