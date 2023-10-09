@@ -18,6 +18,7 @@ import (
 type Entry interface {
 	signature() string
 	String() string
+	Type() string
 }
 
 type InvoiceEntry struct {
@@ -36,6 +37,10 @@ func (e InvoiceEntry) signature() string {
 
 func (e InvoiceEntry) String() string {
 	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
+}
+
+func (e InvoiceEntry) Type() string {
+	return e.IType
 }
 
 type ShuhoEntry struct {
@@ -75,6 +80,10 @@ func (e ShuhoEntry) String() string {
 	wordcount := getShuhoEntryWordCount(e)
 
 	return fmt.Sprintf("%s, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
+}
+
+func (e ShuhoEntry) Type() string {
+	return e.SType
 }
 
 // print error for structs satisfying Entry interface
@@ -137,32 +146,52 @@ func main() {
 		return
 	}
 
-	for _, entry := range invoiceEntries {
-		fmt.Printf("%s\n", entry)
-	}
-
 	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
 	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
+	fmt.Println("")
+	fmt.Printf("Total Translations: %d\n", sum_of_translations(invoiceEntries))
+	fmt.Printf("Total Checks: %d\n", sum_of_checks(invoiceEntries))
 
-	//	printAllEntries(shuhoEntries)
-
-	fmt.Println("fin")
 	//main
 }
 
-//	printAllEntries(shuhoEntries)
+// FOR DEBUG
+// printAllEntries(shuhoEntries)
 func printAllEntries(entries []Entry) {
 	for index, entry := range entries {
 		fmt.Printf("%d: %s\n", index, entry.String())
 	}
 }
 
+func sum_of_checks(entries []Entry) int {
+	var total int
+
+	for _, entry := range entries {
+		if entry.Type() == "英文チェック" {
+			total++
+		}
+	}
+
+	return total
+}
+
+func sum_of_translations(entries []Entry) int {
+	var total int
+
+	for _, entry := range entries {
+		if entry.Type() == "翻訳" {
+			total++
+		}
+	}
+
+	return total
+}
+
 func parseInvoice(f *excelize.File) []Entry {
 	entries := make([]Entry, 0, 40)
 	var sheetName string
 
-	for index, name := range f.GetSheetList() {
-		fmt.Println("INVOICE SHEET NAME", index, name)
+	for _, name := range f.GetSheetList() {
 		sheetName = name
 	}
 
@@ -216,8 +245,6 @@ func parseInvoice(f *excelize.File) []Entry {
 			ie.IType = row[2]
 			ie.IWordCount = row[4]
 			ie.rate = row[5]
-
-			//		fmt.Printf("%s\n", row)
 		}
 
 		entries = append(entries, ie)
@@ -233,10 +260,20 @@ func rowNotComplete(row []string) bool {
 		return true
 	}
 
-	//check for default casenum "ALP-"
-	match, _ := regexp.MatchString(`^(?i)ALP-$`, row[1])
+	return checkForEmptyCase(row[1])
+}
 
-	//must be last
+func checkForEmptyCase(caseField string) bool {
+	//check for default casenum "ALP-" or blank casenum
+	match, _ := regexp.MatchString(`^(?i)ALP-$`, caseField)
+
+	return match && (caseField == "")
+}
+
+//only words for shuho entires x/x format
+func checkForValidDate(dateField string) bool {
+	match, _ := regexp.MatchString(`^(?i)\d+/\d+$`, dateField)
+
 	return match
 }
 
@@ -276,30 +313,22 @@ func parseShuho(f *excelize.File) []Entry {
 				continue
 			}
 
-			//check that 0, 1, 2, and 6 have a value, and that 3 OR 4 has a wordcount
-			if (row[0] == "") || (row[1] == "") || (row[2] == "") || (row[6] == "") {
-				continue
-			}
-
-			if (row[3] == "") && (row[4] == "") {
-				continue
-			}
-
-			/*
-				fmt.Printf("debug:")
-				for index, val := range row {
-					fmt.Printf("%d - %s\n", index, val)
-				}
-			*/
-
-			match, _ := regexp.MatchString(`^(?i)\d+/\d+$`, row[0])
-			if !match {
+			if !checkForValidDate(row[0]) {
 				continue
 			}
 
 			//check for default casenum "ALP-"
-			match, _ = regexp.MatchString(`^(?i)ALP-$`, row[1])
-			if match {
+			if checkForEmptyCase(row[1]) {
+				continue
+			}
+
+			//check that 0, 1, 2, and 6 have a value, and that 3 OR 4 has a wordcount
+			if (row[2] == "") || (row[6] == "") {
+				continue
+			}
+
+			//one of the two wordcounts needs to be present
+			if (row[3] == "") && (row[4] == "") {
 				continue
 			}
 
