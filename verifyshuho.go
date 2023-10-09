@@ -32,7 +32,7 @@ type InvoiceEntry struct {
 
 // stuct methods
 func (e InvoiceEntry) signature() string {
-	return fmt.Sprintf("%s %s %s %s", e.IDate, e.ICaseNum, e.IType, e.IWordCount)
+	return fmt.Sprintf("%s %s %s", e.ICaseNum, e.IType, e.IWordCount)
 }
 
 func (e InvoiceEntry) String() string {
@@ -73,7 +73,7 @@ func getShuhoEntryWordCount(e ShuhoEntry) string {
 func (e ShuhoEntry) signature() string {
 	wordcount := getShuhoEntryWordCount(e)
 
-	return fmt.Sprintf("%s %s %s %s", e.SDate, e.SCaseNum, e.SType, wordcount)
+	return fmt.Sprintf("%s %s %s", e.SCaseNum, e.SType, wordcount)
 }
 
 func (e ShuhoEntry) String() string {
@@ -152,6 +152,8 @@ func main() {
 	fmt.Printf("Total Translations: %d\n", sum_of_translations(invoiceEntries))
 	fmt.Printf("Total Checks: %d\n", sum_of_checks(invoiceEntries))
 
+	ensureNoDuplicateInvoiceEntries(invoiceEntries)
+
 	//main
 }
 
@@ -160,6 +162,25 @@ func main() {
 func printAllEntries(entries []Entry) {
 	for index, entry := range entries {
 		fmt.Printf("%d: %s\n", index, entry.String())
+	}
+}
+
+func ensureNoDuplicateInvoiceEntries(entries []Entry) {
+	var entry Entry
+	var copies int
+
+	for _, entry = range entries {
+		copies = 0
+		for _, nextentry := range entries {
+			if entry.signature() == nextentry.signature() {
+				copies++
+			}
+		}
+	}
+
+	if copies > 1 {
+		fmt.Printf("ERROR: Duplicate entry (%s)\n", entry.signature())
+		os.Exit(copies)
 	}
 }
 
