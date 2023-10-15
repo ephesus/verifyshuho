@@ -20,12 +20,12 @@ type Entry interface {
 	signature() string
 	String() string
 	Type() string
-	Date() string
+	Date() time.Time
 }
 
 type InvoiceEntry struct {
 	rowNum     string
-	IDate      string
+	IDate      time.Time
 	ICaseNum   string
 	IType      string
 	IWordCount string
@@ -41,7 +41,7 @@ func (e InvoiceEntry) String() string {
 	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
 }
 
-func (e InvoiceEntry) Date() string {
+func (e InvoiceEntry) Date() time.Time {
 	return e.IDate
 }
 
@@ -50,7 +50,7 @@ func (e InvoiceEntry) Type() string {
 }
 
 type ShuhoEntry struct {
-	SDate       string
+	SDate       time.Time
 	SCaseNum    string
 	SType       string
 	SCWordCount string
@@ -68,7 +68,7 @@ func getShuhoEntryWordCount(e ShuhoEntry) string {
 		wordcount = e.SCWordCount
 	default:
 		//should never happen, the excel file restricts to the two above values
-		fmt.Printf("NOTE: %s - %s, %s\n", e.SType, e.SDate, e.SCaseNum)
+		fmt.Printf("NOTE: %s - %v, %s\n", e.SType, e.SDate, e.SCaseNum)
 		wordcount = "UNKNOWN"
 	}
 
@@ -85,10 +85,10 @@ func (e ShuhoEntry) signature() string {
 func (e ShuhoEntry) String() string {
 	wordcount := getShuhoEntryWordCount(e)
 
-	return fmt.Sprintf("%s, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
+	return fmt.Sprintf("%v, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
 }
 
-func (e ShuhoEntry) Date() string {
+func (e ShuhoEntry) Date() time.Time {
 	return e.SDate
 }
 
@@ -179,7 +179,7 @@ func printAllEntries(entries []Entry) {
 func ensureInvoiceEntriesAreInShuho(entries []Entry) {
 
 	for _, entry := range entries {
-		entryDate := getDate(entry.Date())
+		entryDate := entry.Date()
 		fmt.Println(entryDate)
 	}
 }
@@ -294,7 +294,7 @@ func parseInvoice(f *excelize.File) []Entry {
 
 		if len(row) > 5 {
 			ie.rowNum = row[0]
-			ie.IDate = row[3]
+			ie.IDate = getDate(row[3])
 			ie.ICaseNum = row[1]
 			ie.IType = row[2]
 			ie.IWordCount = row[4]
@@ -386,7 +386,7 @@ func parseShuho(f *excelize.File) []Entry {
 				continue
 			}
 
-			se.SDate = row[0]
+			se.SDate = getDate(row[0])
 			se.SCaseNum = row[1]
 			se.SType = row[2]
 			se.SCWordCount = row[3]
