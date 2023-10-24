@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/xuri/excelize/v2"
 )
@@ -18,11 +19,13 @@ import (
 type Entry interface {
 	signature() string
 	String() string
+	Type() string
+	Date() time.Time
 }
 
 type InvoiceEntry struct {
 	rowNum     string
-	IDate      string
+	IDate      time.Time
 	ICaseNum   string
 	IType      string
 	IWordCount string
@@ -31,15 +34,23 @@ type InvoiceEntry struct {
 
 // stuct methods
 func (e InvoiceEntry) signature() string {
-	return fmt.Sprintf("%s %s %s %s", e.IDate, e.ICaseNum, e.IType, e.IWordCount)
+	return fmt.Sprintf("%s %s %s", e.ICaseNum, e.IType, e.IWordCount)
 }
 
 func (e InvoiceEntry) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.rate)
+}
+
+func (e InvoiceEntry) Date() time.Time {
+	return e.IDate
+}
+
+func (e InvoiceEntry) Type() string {
+	return e.IType
 }
 
 type ShuhoEntry struct {
-	SDate       string
+	SDate       time.Time
 	SCaseNum    string
 	SType       string
 	SCWordCount string
@@ -57,7 +68,7 @@ func getShuhoEntryWordCount(e ShuhoEntry) string {
 		wordcount = e.SCWordCount
 	default:
 		//should never happen, the excel file restricts to the two above values
-		fmt.Printf("NOTE: %s - %s, %s\n", e.SType, e.SDate, e.SCaseNum)
+		fmt.Printf("NOTE: %s - %v, %s\n", e.SType, e.SDate, e.SCaseNum)
 		wordcount = "UNKNOWN"
 	}
 
@@ -68,13 +79,21 @@ func getShuhoEntryWordCount(e ShuhoEntry) string {
 func (e ShuhoEntry) signature() string {
 	wordcount := getShuhoEntryWordCount(e)
 
-	return fmt.Sprintf("%s %s %s %s", e.SDate, e.SCaseNum, e.SType, wordcount)
+	return fmt.Sprintf("%s %s %s", e.SCaseNum, e.SType, wordcount)
 }
 
 func (e ShuhoEntry) String() string {
 	wordcount := getShuhoEntryWordCount(e)
 
-	return fmt.Sprintf("%s, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
+	return fmt.Sprintf("%v, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
+}
+
+func (e ShuhoEntry) Date() time.Time {
+	return e.SDate
+}
+
+func (e ShuhoEntry) Type() string {
+	return e.SType
 }
 
 // print error for structs satisfying Entry interface
@@ -137,32 +156,144 @@ func main() {
 		return
 	}
 
-	for _, entry := range invoiceEntries {
-		fmt.Printf("%s\n", entry)
-	}
-
 	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
 	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
+	fmt.Println("")
+	fmt.Printf("Total Translations: %d\n", sumOfTranslations(invoiceEntries))
+	fmt.Printf("Total Checks: %d\n", sumOfChecks(invoiceEntries))
 
-	//	printAllEntries(shuhoEntries)
+	fmt.Println("")
 
-	fmt.Println("fin")
+	ensureNoDuplicateInvoiceEntries(invoiceEntries)
+	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
+
 	//main
 }
 
-//	printAllEntries(shuhoEntries)
+// FOR DEBUG
+// printAllEntries(shuhoEntries)
 func printAllEntries(entries []Entry) {
 	for index, entry := range entries {
 		fmt.Printf("%d: %s\n", index, entry.String())
 	}
 }
 
+func getDate(txtDate string) time.Time {
+	entryDate, err := time.Parse("01-02-06", txtDate)
+
+	if err != nil {
+		entryDate, err = time.Parse("1/2", txtDate)
+		if err != nil {
+			fmt.Printf("ERROR: Invalid Date %s", txtDate)
+			os.Exit(2)
+		}
+		entryDate = thisYearOrLastYear(entryDate)
+	}
+
+	return entryDate
+}
+
+func thisYearOrLastYear(theDate time.Time) time.Time {
+	var MyYear int
+
+	if theDate.YearDay() <= time.Now().YearDay() {
+		MyYear = time.Now().Year()
+	} else {
+		MyYear = time.Now().Year() - 1
+	}
+
+	return time.Date(MyYear, theDate.Month(), theDate.Day(), 0, 0, 0, theDate.Nanosecond(), theDate.Location())
+}
+
+func ensureNoDuplicateInvoiceEntries(entries []Entry) {
+	var entry Entry
+	var copies int
+
+	for _, entry = range entries {
+		copies = 0
+		for _, nextentry := range entries {
+			if entry.signature() == nextentry.signature() {
+				copies++
+			}
+		}
+	}
+
+	if copies != 1 {
+		fmt.Printf("ERROR: Duplicate entry (Row %s)\n", entry.String())
+	} else {
+		showCheckSuccess("No Duplicate Invoice Entries")
+	}
+}
+
+func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
+	scopedShuhoEntries := getScopedShuho(sentries, ientries)
+	var copies int
+
+	for _, ientry := range ientries {
+		copies = 0
+		for _, sentry := range scopedShuhoEntries {
+			if sentry.signature() == ientry.signature() {
+				copies++
+			}
+		}
+
+		if copies < 1 {
+			fmt.Printf("ERROR: Invoice Entry Not in Shuho: Row %s\n", ientry.String())
+		}
+	}
+}
+
+func getScopedShuho(sentries []Entry, ientries []Entry) []Entry {
+	var sse []Entry //scoped shuho entries
+	startDate := ientries[0].Date()
+	endDate := ientries[len(ientries)-1].Date()
+
+	for _, entry := range sentries {
+		//if the date is between the start and end dates,
+		//but also check for equal to the start end date
+		if (entry.Date().After(startDate.AddDate(0, 0, -1))) && (entry.Date().Before(endDate.AddDate(0, 0, 1))) {
+			sse = append(sse, entry)
+		}
+	}
+
+	//fmt.Printf("Length of sse: %d\n", len(sse))
+
+	return sse
+}
+
+func showCheckSuccess(message string) {
+	fmt.Printf("OKAY... %s\n", message)
+}
+
+func sumOfChecks(entries []Entry) int {
+	var total int
+
+	for _, entry := range entries {
+		if entry.Type() == "英文チェック" {
+			total++
+		}
+	}
+
+	return total
+}
+
+func sumOfTranslations(entries []Entry) int {
+	var total int
+
+	for _, entry := range entries {
+		if entry.Type() == "翻訳" {
+			total++
+		}
+	}
+
+	return total
+}
+
 func parseInvoice(f *excelize.File) []Entry {
 	entries := make([]Entry, 0, 40)
 	var sheetName string
 
-	for index, name := range f.GetSheetList() {
-		fmt.Println("INVOICE SHEET NAME", index, name)
+	for _, name := range f.GetSheetList() {
 		sheetName = name
 	}
 
@@ -211,13 +342,11 @@ func parseInvoice(f *excelize.File) []Entry {
 
 		if len(row) > 5 {
 			ie.rowNum = row[0]
-			ie.IDate = row[3]
+			ie.IDate = getDate(row[3])
 			ie.ICaseNum = row[1]
 			ie.IType = row[2]
 			ie.IWordCount = row[4]
 			ie.rate = row[5]
-
-			//		fmt.Printf("%s\n", row)
 		}
 
 		entries = append(entries, ie)
@@ -233,10 +362,20 @@ func rowNotComplete(row []string) bool {
 		return true
 	}
 
-	//check for default casenum "ALP-"
-	match, _ := regexp.MatchString(`^(?i)ALP-$`, row[1])
+	return checkForEmptyCase(row[1])
+}
 
-	//must be last
+func checkForEmptyCase(caseField string) bool {
+	//check for default casenum "ALP-" or blank casenum
+	match, _ := regexp.MatchString(`^(?i)ALP-$`, caseField)
+
+	return match && (caseField == "")
+}
+
+// only words for shuho entires x/x format
+func checkForValidDate(dateField string) bool {
+	match, _ := regexp.MatchString(`^(?i)\d+/\d+$`, dateField)
+
 	return match
 }
 
@@ -276,34 +415,26 @@ func parseShuho(f *excelize.File) []Entry {
 				continue
 			}
 
-			//check that 0, 1, 2, and 6 have a value, and that 3 OR 4 has a wordcount
-			if (row[0] == "") || (row[1] == "") || (row[2] == "") || (row[6] == "") {
-				continue
-			}
-
-			if (row[3] == "") && (row[4] == "") {
-				continue
-			}
-
-			/*
-				fmt.Printf("debug:")
-				for index, val := range row {
-					fmt.Printf("%d - %s\n", index, val)
-				}
-			*/
-
-			match, _ := regexp.MatchString(`^(?i)\d+/\d+$`, row[0])
-			if !match {
+			if !checkForValidDate(row[0]) {
 				continue
 			}
 
 			//check for default casenum "ALP-"
-			match, _ = regexp.MatchString(`^(?i)ALP-$`, row[1])
-			if match {
+			if checkForEmptyCase(row[1]) {
 				continue
 			}
 
-			se.SDate = row[0]
+			//check that 0, 1, 2, and 6 have a value, and that 3 OR 4 has a wordcount
+			if (row[2] == "") || (row[6] == "") {
+				continue
+			}
+
+			//one of the two wordcounts needs to be present
+			if (row[3] == "") && (row[4] == "") {
+				continue
+			}
+
+			se.SDate = getDate(row[0])
 			se.SCaseNum = row[1]
 			se.SType = row[2]
 			se.SCWordCount = row[3]
