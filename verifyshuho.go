@@ -38,7 +38,7 @@ func (e InvoiceEntry) signature() string {
 }
 
 func (e InvoiceEntry) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.IDate, e.ICaseNum, e.IType, e.IWordCount, e.rate)
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.rate)
 }
 
 func (e InvoiceEntry) Date() time.Time {
@@ -162,8 +162,10 @@ func main() {
 	fmt.Printf("Total Translations: %d\n", sumOfTranslations(invoiceEntries))
 	fmt.Printf("Total Checks: %d\n", sumOfChecks(invoiceEntries))
 
+	fmt.Println("")
+
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
-	ensureInvoiceEntriesAreInShuho(invoiceEntries)
+	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
 
 	//main
 }
@@ -176,26 +178,31 @@ func printAllEntries(entries []Entry) {
 	}
 }
 
-func ensureInvoiceEntriesAreInShuho(entries []Entry) {
-
-	for _, entry := range entries {
-		entryDate := entry.Date()
-		fmt.Println(entryDate)
-	}
-}
-
-func getDate(eDate string) time.Time {
-	entryDate, err := time.Parse("01-02-06", eDate)
+func getDate(txtDate string) time.Time {
+	entryDate, err := time.Parse("01-02-06", txtDate)
 
 	if err != nil {
-		entryDate, err = time.Parse("1/2", eDate)
+		entryDate, err = time.Parse("1/2", txtDate)
 		if err != nil {
-			fmt.Printf("ERROR: Invalid Date %s", eDate)
+			fmt.Printf("ERROR: Invalid Date %s", txtDate)
 			os.Exit(2)
 		}
+		entryDate = thisYearOrLastYear(entryDate)
 	}
 
 	return entryDate
+}
+
+func thisYearOrLastYear(theDate time.Time) time.Time {
+	var MyYear int
+
+	if theDate.YearDay() <= time.Now().YearDay() {
+		MyYear = time.Now().Year()
+	} else {
+		MyYear = time.Now().Year() - 1
+	}
+
+	return time.Date(MyYear, theDate.Month(), theDate.Day(), 0, 0, 0, theDate.Nanosecond(), theDate.Location())
 }
 
 func ensureNoDuplicateInvoiceEntries(entries []Entry) {
@@ -211,10 +218,51 @@ func ensureNoDuplicateInvoiceEntries(entries []Entry) {
 		}
 	}
 
-	if copies > 1 {
-		fmt.Printf("ERROR: Duplicate entry (%s)\n", entry.signature())
-		os.Exit(copies)
+	if copies != 1 {
+		fmt.Printf("ERROR: Duplicate entry (Row %s)\n", entry.String())
+	} else {
+		showCheckSuccess("No Duplicate Invoice Entries")
 	}
+}
+
+func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
+	scopedShuhoEntries := getScopedShuho(sentries, ientries)
+	var copies int
+
+	for _, ientry := range ientries {
+		copies = 0
+		for _, sentry := range scopedShuhoEntries {
+			if sentry.signature() == ientry.signature() {
+				copies++
+			}
+		}
+
+		if copies < 1 {
+			fmt.Printf("ERROR: Invoice Entry Not in Shuho: Row %s\n", ientry.String())
+		}
+	}
+}
+
+func getScopedShuho(sentries []Entry, ientries []Entry) []Entry {
+	var sse []Entry //scoped shuho entries
+	startDate := ientries[0].Date()
+	endDate := ientries[len(ientries)-1].Date()
+
+	for _, entry := range sentries {
+		//if the date is between the start and end dates,
+		//but also check for equal to the start end date
+		if (entry.Date().After(startDate.AddDate(0, 0, -1))) && (entry.Date().Before(endDate.AddDate(0, 0, 1))) {
+			sse = append(sse, entry)
+		}
+	}
+
+	//fmt.Printf("Length of sse: %d\n", len(sse))
+
+	return sse
+}
+
+func showCheckSuccess(message string) {
+	fmt.Printf("OKAY... %s\n", message)
 }
 
 func sumOfChecks(entries []Entry) int {
