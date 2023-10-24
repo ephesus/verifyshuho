@@ -8,11 +8,16 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 )
 
 // entry signatures are Date, Casenum, Type, Wordcount
@@ -21,6 +26,8 @@ type Entry interface {
 	String() string
 	Type() string
 	Date() time.Time
+	Rate() string
+	WordCount() string
 }
 
 type InvoiceEntry struct {
@@ -41,8 +48,16 @@ func (e InvoiceEntry) String() string {
 	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.rate)
 }
 
+func (e InvoiceEntry) Rate() string {
+	return e.rate
+}
+
 func (e InvoiceEntry) Date() time.Time {
 	return e.IDate
+}
+
+func (e InvoiceEntry) WordCount() string {
+	return e.IWordCount
 }
 
 func (e InvoiceEntry) Type() string {
@@ -90,6 +105,14 @@ func (e ShuhoEntry) String() string {
 
 func (e ShuhoEntry) Date() time.Time {
 	return e.SDate
+}
+
+func (e ShuhoEntry) Rate() string {
+	return ""
+}
+
+func (e ShuhoEntry) WordCount() string {
+	return getShuhoEntryWordCount(e)
 }
 
 func (e ShuhoEntry) Type() string {
@@ -164,10 +187,44 @@ func main() {
 
 	fmt.Println("")
 
+	ensureRatesAreCorrect(invoiceEntries)
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
 	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
+	ensureShuhoEntriesAreInShuho(shuhoEntries, invoiceEntries)
+
+	p := message.NewPrinter(language.English)
+
+	p.Printf("Total for translations: %.0f\n", sumEntries(invoiceEntries, "翻訳"))
+	p.Printf("Total for Checks:       %.1f\n", roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1))
+	pretax := sumEntries(invoiceEntries, "翻訳") + sumEntries(invoiceEntries, "英文チェック") + 10000
+	p.Printf("Pre-T Total:            %.0f\n", pretax)
+	p.Printf("After-T Total:          %.0f\n", roundFloat((pretax*0.8979)-330, 0))
 
 	//main
+}
+
+func roundFloat(val float64, precision uint) float64 {
+	ratio := math.Pow(10, float64(precision))
+	return math.Round(val*ratio) / ratio
+}
+
+// sum screening by Type() (translation or check)
+func sumEntries(ientries []Entry, eType string) float64 {
+	var total float64
+
+	for _, ie := range ientries {
+		if ie.Type() == eType {
+			rate, _ := strconv.ParseFloat(ie.Rate(), 64)
+			wordc, err := strconv.ParseFloat(ie.WordCount(), 64)
+			if err != nil {
+				fmt.Println(err)
+			}
+
+			total += wordc * rate
+		}
+	}
+
+	return total
 }
 
 // FOR DEBUG
@@ -205,6 +262,29 @@ func thisYearOrLastYear(theDate time.Time) time.Time {
 	return time.Date(MyYear, theDate.Month(), theDate.Day(), 0, 0, 0, theDate.Nanosecond(), theDate.Location())
 }
 
+func ensureRatesAreCorrect(entries []Entry) {
+	var entry Entry
+	var errors int
+
+	for _, entry = range entries {
+		if entry.Rate() == "18" {
+			if entry.Type() != "翻訳" {
+				errors++
+			}
+		} else if entry.Rate() == "1.4" {
+			if entry.Type() != "英文チェック" {
+				errors++
+			}
+		}
+	}
+
+	if errors != 0 {
+		fmt.Printf("ERROR: Rate is incorrect (Row %s)\n", entry.String())
+	} else {
+		showCheckSuccess("Invoice rates are correct")
+	}
+}
+
 func ensureNoDuplicateInvoiceEntries(entries []Entry) {
 	var entry Entry
 	var copies int
@@ -227,7 +307,7 @@ func ensureNoDuplicateInvoiceEntries(entries []Entry) {
 
 func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
 	scopedShuhoEntries := getScopedShuho(sentries, ientries)
-	var copies int
+	var totalerrors, copies int
 
 	for _, ientry := range ientries {
 		copies = 0
@@ -239,7 +319,36 @@ func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
 
 		if copies < 1 {
 			fmt.Printf("ERROR: Invoice Entry Not in Shuho: Row %s\n", ientry.String())
+			totalerrors++
 		}
+	}
+
+	if totalerrors == 0 {
+		showCheckSuccess("All Invoice Entries are in the Shuho")
+	}
+}
+
+func ensureShuhoEntriesAreInShuho(sentries []Entry, ientries []Entry) {
+	scopedShuhoEntries := getScopedShuho(sentries, ientries)
+	var totalerrors, copies int
+
+	for _, sentry := range scopedShuhoEntries {
+		copies = 0
+
+		for _, ientry := range ientries {
+			if ientry.signature() == sentry.signature() {
+				copies++
+			}
+		}
+
+		if copies != 1 {
+			fmt.Printf("ERROR: Shuho Entry Not in Invoice: %s\n", sentry.String())
+			totalerrors++
+		}
+	}
+
+	if totalerrors == 0 {
+		showCheckSuccess("All Shuho Entries are in the Invoice")
 	}
 }
 
@@ -345,7 +454,8 @@ func parseInvoice(f *excelize.File) []Entry {
 			ie.IDate = getDate(row[3])
 			ie.ICaseNum = row[1]
 			ie.IType = row[2]
-			ie.IWordCount = row[4]
+			tmp := strings.ReplaceAll(row[4], ",", "")
+			ie.IWordCount = strings.ReplaceAll(tmp, " ", "")
 			ie.rate = row[5]
 		}
 
@@ -437,9 +547,11 @@ func parseShuho(f *excelize.File) []Entry {
 			se.SDate = getDate(row[0])
 			se.SCaseNum = row[1]
 			se.SType = row[2]
-			se.SCWordCount = row[3]
-			se.STWordCount = row[4]
-			se.SAuthor = row[5]
+			tmp := strings.ReplaceAll(row[3], ",", "")
+			se.SCWordCount = strings.ReplaceAll(tmp, " ", "")
+			tmp = strings.ReplaceAll(row[4], ",", "")
+			se.STWordCount = strings.ReplaceAll(tmp, " ", "")
+			se.SAuthor = row[6]
 
 			entries = append(entries, se)
 		}
