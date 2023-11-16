@@ -253,7 +253,7 @@ func getDate(txtDate string) time.Time {
 func thisYearOrLastYear(theDate time.Time) time.Time {
 	var MyYear int
 
-	if theDate.YearDay() <= time.Now().YearDay() {
+	if theDate.YearDay() <= time.Now().AddDate(0, 0, 1).YearDay() {
 		MyYear = time.Now().Year()
 	} else {
 		MyYear = time.Now().Year() - 1
