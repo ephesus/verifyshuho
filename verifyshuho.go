@@ -133,7 +133,7 @@ func greeting() {
 
 func main() {
 	if len(os.Args[1:]) != 2 {
-		fmt.Println("ERROR Usage: ./verifyshuho <Shuho.xlsx> <Invoice.xlsx>")
+		fmt.Println("\033[1;31mERROR Usage:\033[0m ./verifyshuho <Shuho.xlsx> <Invoice.xlsx>")
 		return
 	}
 
@@ -194,11 +194,12 @@ func main() {
 
 	p := message.NewPrinter(language.English)
 
+	fmt.Println("")
 	p.Printf("Total for translations: %.0f\n", sumEntries(invoiceEntries, "翻訳"))
 	p.Printf("Total for Checks:       %.1f\n", roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1))
 	pretax := sumEntries(invoiceEntries, "翻訳") + sumEntries(invoiceEntries, "英文チェック") + 10000
-	p.Printf("Pre-T Total:            %.0f\n", pretax)
-	p.Printf("After-T Total:          %.0f\n", roundFloat((pretax*0.8979)-330, 0))
+	p.Printf("\033[1;32mPre-T Total:            %.0f\033[0m\n", pretax)
+	p.Printf("\033[1;31mAfter-T Total:          %.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
 
 	//main
 }
@@ -279,7 +280,7 @@ func ensureRatesAreCorrect(entries []Entry) {
 	}
 
 	if errors != 0 {
-		fmt.Printf("ERROR: Rate is incorrect (Row %s)\n", entry.String())
+		fmt.Printf("\033[1;31mERROR:\033[0m Rate is incorrect (Row %s)\n", entry.String())
 	} else {
 		showCheckSuccess("Invoice rates are correct")
 	}
@@ -299,7 +300,7 @@ func ensureNoDuplicateInvoiceEntries(entries []Entry) {
 	}
 
 	if copies != 1 {
-		fmt.Printf("ERROR: Duplicate entry (Row %s)\n", entry.String())
+		fmt.Printf("\033[1;31mERROR:\033[0m Duplicate entry (Row %s)\n", entry.String())
 	} else {
 		showCheckSuccess("No Duplicate Invoice Entries")
 	}
@@ -318,7 +319,7 @@ func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
 		}
 
 		if copies < 1 {
-			fmt.Printf("ERROR: Invoice Entry Not in Shuho: Row %s\n", ientry.String())
+			fmt.Printf("\033[1;31mERROR:\033[0m Invoice Entry Not in Shuho: Row %s\n", ientry.String())
 			totalerrors++
 		}
 	}
@@ -342,7 +343,7 @@ func ensureShuhoEntriesAreInShuho(sentries []Entry, ientries []Entry) {
 		}
 
 		if copies != 1 {
-			fmt.Printf("ERROR: Shuho Entry Not in Invoice: %s\n", sentry.String())
+			fmt.Printf("\033[1;31mERROR:\033[0m Shuho Entry Not in Invoice: %s\n", sentry.String())
 			totalerrors++
 		}
 	}
@@ -507,7 +508,7 @@ func parseShuho(f *excelize.File) []Entry {
 		}
 
 		if rows == nil {
-			fmt.Printf("ERROR: Sheet %s (%d) - No Rows", name, index)
+			fmt.Printf("\033[1;31mERROR:\033[0m Sheet %s (%d) - No Rows", name, index)
 			return entries
 		}
 
