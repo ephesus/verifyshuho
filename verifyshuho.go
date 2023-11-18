@@ -254,7 +254,8 @@ func getDate(txtDate string) time.Time {
 func thisYearOrLastYear(theDate time.Time) time.Time {
 	var MyYear int
 
-	if theDate.YearDay() <= time.Now().AddDate(0, 0, 1).YearDay() {
+	//if the month/day is earlier than a week from now, assume it's last year
+	if theDate.YearDay() <= time.Now().AddDate(0, 0, 7).YearDay() {
 		MyYear = time.Now().Year()
 	} else {
 		MyYear = time.Now().Year() - 1
