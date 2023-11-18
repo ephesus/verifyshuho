@@ -198,8 +198,8 @@ func main() {
 	p.Printf("Total for translations: %.0f\n", sumEntries(invoiceEntries, "翻訳"))
 	p.Printf("Total for Checks:       %.1f\n", roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1))
 	pretax := sumEntries(invoiceEntries, "翻訳") + sumEntries(invoiceEntries, "英文チェック") + 10000
-	p.Printf("\033[1;32mPre-T Total:            %.0f\033[0m\n", pretax)
-	p.Printf("\033[1;31mAfter-T Total:          %.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
+	p.Printf("\033[1;31mPre-T Total:            %.0f\033[0m\n", pretax)
+	p.Printf("\033[1;32mAfter-T Total:          %.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
 
 	//main
 }
