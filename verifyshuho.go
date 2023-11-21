@@ -195,11 +195,13 @@ func main() {
 	p := message.NewPrinter(language.English)
 
 	fmt.Println("")
-	p.Printf("Total for translations: %.0f\n", sumEntries(invoiceEntries, "翻訳"))
-	p.Printf("Total for Checks:       %.1f\n", roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1))
+	ieTotal := sumEntries(invoiceEntries, "翻訳")
+	p.Printf("Total for translations (\033[1;33m%v\033[0m words): \t%.0f\n", ieTotal/18, ieTotal)
+	icTotal := roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1)
+	p.Printf("Total for Checks (\033[1;33m%v\033[0m words):     \t%.1f\n", icTotal/1.4, icTotal)
 	pretax := sumEntries(invoiceEntries, "翻訳") + sumEntries(invoiceEntries, "英文チェック") + 10000
-	p.Printf("\033[1;31mPre-T Total:            %.0f\033[0m\n", pretax)
-	p.Printf("\033[1;32mAfter-T Total:          %.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
+	p.Printf("\033[1;31mPre-T Total:            \t\t%.0f\033[0m\n", pretax)
+	p.Printf("\033[1;32mAfter-T Total:          \t\t%.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
 
 	//main
 }
