@@ -182,7 +182,7 @@ func main() {
 	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
 	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
 	fmt.Println("")
-	fmt.Printf("Total Translations: %d\n", sumOfTranslations(invoiceEntries))
+	fmt.Printf("Total Translations: \033[1;36m%d\033[0m\n", sumOfTranslations(invoiceEntries))
 	fmt.Printf("Total Checks: %d\n", sumOfChecks(invoiceEntries))
 
 	fmt.Println("")
