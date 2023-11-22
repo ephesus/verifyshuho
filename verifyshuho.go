@@ -200,7 +200,7 @@ func main() {
 	icTotal := roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1)
 	p.Printf("Total for Checks (\033[1;33m%v\033[0m words):     \t%.1f\n", icTotal/1.4, icTotal)
 	pretax := sumEntries(invoiceEntries, "翻訳") + sumEntries(invoiceEntries, "英文チェック") + 10000
-	p.Printf("\033[1;31mPre-T Total:            \t\t%.0f\033[0m\n", pretax)
+	p.Printf("\033[1;31mPre-T Total:            \t\t%.0f\033[0m (%v USD)\n", pretax, (ieTotal/18)*.15)
 	p.Printf("\033[1;32mAfter-T Total:          \t\t%.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
 
 	//main
