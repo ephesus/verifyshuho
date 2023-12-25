@@ -257,10 +257,10 @@ func thisYearOrLastYear(theDate time.Time) time.Time {
 	var MyYear int
 
 	//if the month/day is earlier than a week from now, assume it's last year
-	if theDate.YearDay() <= time.Now().AddDate(0, 0, 3).YearDay() {
+	if theDate.YearDay() <= time.Now().AddDate(0, 0, 7).YearDay() {
 		MyYear = time.Now().Year()
 	} else {
-		MyYear = time.Now().Year() - 1
+		MyYear = time.Now().AddDate(0, 0, 7).Year() - 1 //take the year -1 (use date after add date in case it's late Dec)
 	}
 
 	return time.Date(MyYear, theDate.Month(), theDate.Day(), 0, 0, 0, theDate.Nanosecond(), theDate.Location())
