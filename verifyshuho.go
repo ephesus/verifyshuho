@@ -195,14 +195,13 @@ func main() {
 	p := message.NewPrinter(language.English)
 
 	fmt.Println("")
-	ieTotal := sumEntries(invoiceEntries, "翻訳")
-	p.Printf("Total for translations (\033[1;33m%v\033[0m words): \t%.0f\n", ieTotal/18, ieTotal)
-	icTotal := roundFloat(sumEntries(invoiceEntries, "英文チェック"), 1)
-	p.Printf("Total for Checks (\033[1;33m%.0f\033[0m words):     \t%.1f\n", icTotal/1.4, icTotal)
-	pretax := sumEntries(invoiceEntries, "翻訳") + sumEntries(invoiceEntries, "英文チェック") + 10000
-	inUSD := ((ieTotal/18)*.15 + 81.16 + (sumEntries(invoiceEntries, "英文チェック") / 1.4 * .01))
-	p.Printf("\033[1;31mPre-T Total:            \t\t%.0f\033[0m (%.2f USD : %.2f /YR)\n", pretax, inUSD, inUSD*12)
-	p.Printf("\033[1;32mAfter-T Total:          \t\t%.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 0))
+	ieTotal := roundFloat(sumEntries(invoiceEntries, "翻訳"), 2)
+	p.Printf("Total for translations: \t%.2f\n", ieTotal)
+	icTotal := roundFloat(sumEntries(invoiceEntries, "英文チェック"), 2)
+	p.Printf("Total for Checks:     \t\t%.2f\n", icTotal)
+	pretax := icTotal + ieTotal + 81.16
+	p.Printf("\033[1;31mPre-T Total: \t\t\t%.2f\033[0m (%.2f /YR)\n", pretax, pretax*12)
+	//p.Printf("\033[1;32mAfter-T Total:          \t\t%.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 2))
 
 	//main
 }
@@ -261,7 +260,7 @@ func thisYearOrLastYear(theDate time.Time) time.Time {
 	if theDate.YearDay() <= time.Now().AddDate(0, 0, 7).YearDay() {
 		MyYear = time.Now().Year()
 	} else {
-		MyYear = time.Now().Year() - 1
+		MyYear = time.Now().AddDate(0, 0, 7).Year() - 1 //take the year -1 (use date after add date in case it's late Dec)
 	}
 
 	return time.Date(MyYear, theDate.Month(), theDate.Day(), 0, 0, 0, theDate.Nanosecond(), theDate.Location())
