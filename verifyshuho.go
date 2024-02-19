@@ -7,6 +7,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math"
 	"os"
@@ -19,6 +20,26 @@ import (
 	"golang.org/x/text/language"
 	"golang.org/x/text/message"
 )
+
+type Color string
+
+const (
+	ColorBlack  Color = "\u001b[30m"
+	ColorRed    Color = "\u001b[31m"
+	ColorGreen  Color = "\u001b[32m"
+	ColorYellow Color = "\u001b[33m"
+	ColorBlue   Color = "\u001b[34m"
+	ColorReset  Color = "\u001b[0m"
+)
+
+func colorize(color Color, message string) {
+	fmt.Println(string(color), message, string(ColorReset))
+}
+
+var invoicesf *bool
+var shuhosf *bool
+var checksf *bool
+var translationsf *bool
 
 // entry signatures are Date, Casenum, Type, Wordcount
 type Entry interface {
@@ -132,13 +153,26 @@ func greeting() {
 }
 
 func main() {
-	if len(os.Args[1:]) != 2 {
-		fmt.Println("\033[1;31mERROR Usage:\033[0m ./verifyshuho <Shuho.xlsx> <Invoice.xlsx>")
+	invoicesf = flag.Bool("invoices", false, "display every invoice entry")
+	shuhosf = flag.Bool("shuhos", false, "display every shuho entry")
+	checksf = flag.Bool("checks", false, "display all checks")
+	translationsf = flag.Bool("translations", false, "display all translations")
+
+	flag.Parse()
+
+	fmt.Printf("%v\n", flag.NArg())
+
+	if flag.NArg() != 2 {
+		fmt.Println("\033[1;31mERROR Usage:\033[0m ./verifyshuho [OPTIONS] <Shuho.xlsx> <Invoice.xlsx>")
+		fmt.Println("--invoices show all invoice entries")
+		fmt.Println("--shuhos show all shuho entries")
+		fmt.Println("--translations show all translations")
+		fmt.Println("--checks show all checks")
 		return
 	}
 
-	shuhoFileName := os.Args[1]
-	invoiceFileName := os.Args[2]
+	shuhoFileName := flag.Arg(0)
+	invoiceFileName := flag.Arg(1)
 
 	var shuhoEntries []Entry
 	var invoiceEntries []Entry
@@ -203,7 +237,55 @@ func main() {
 	p.Printf("\033[1;31mPre-T Total: \t\t\t%.2f\033[0m (%.2f /YR)\n", pretax, pretax*12)
 	//p.Printf("\033[1;32mAfter-T Total:          \t\t%.0f\033[0m\n", roundFloat((pretax*0.8979)-330, 2))
 
+	if *invoicesf {
+		printAllInvoices(invoiceEntries)
+	}
+
+	if *shuhosf {
+		printAllShuhos(getScopedShuho(shuhoEntries, invoiceEntries))
+	}
+
+	if *translationsf {
+		printAllTranslations(getScopedShuho(shuhoEntries, invoiceEntries))
+	}
+
+	if *checksf {
+		printAllChecks(getScopedShuho(shuhoEntries, invoiceEntries))
+	}
+
 	//main
+}
+
+func printAllChecks(entries []Entry) {
+	colorize(ColorGreen, "\n** All Checks: ")
+	for index, entry := range entries {
+		if entry.Type() == "英文チェック" {
+			fmt.Printf("%d: %s\n", index, entry.String())
+		}
+	}
+}
+
+func printAllTranslations(entries []Entry) {
+	colorize(ColorGreen, "\n** All Translations: ")
+	for index, entry := range entries {
+		if entry.Type() == "翻訳" {
+			fmt.Printf("%d: %s\n", index, entry.String())
+		}
+	}
+}
+
+func printAllInvoices(entries []Entry) {
+	colorize(ColorGreen, "\n** All Invoices: ")
+	for index, entry := range entries {
+		fmt.Printf("%d: %s\n", index, entry.String())
+	}
+}
+
+func printAllShuhos(entries []Entry) {
+	colorize(ColorGreen, "\n** All Invoices: ")
+	for index, entry := range entries {
+		fmt.Printf("%d: %s\n", index, entry.String())
+	}
 }
 
 func roundFloat(val float64, precision uint) float64 {
