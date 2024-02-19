@@ -160,8 +160,6 @@ func main() {
 
 	flag.Parse()
 
-	fmt.Printf("%v\n", flag.NArg())
-
 	if flag.NArg() != 2 {
 		fmt.Println("\033[1;31mERROR Usage:\033[0m ./verifyshuho [OPTIONS] <Shuho.xlsx> <Invoice.xlsx>")
 		fmt.Println("--invoices show all invoice entries")
