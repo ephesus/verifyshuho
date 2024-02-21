@@ -280,7 +280,7 @@ func printAllInvoices(entries []Entry) {
 }
 
 func printAllShuhos(entries []Entry) {
-	colorize(ColorGreen, "\n** All Invoices: ")
+	colorize(ColorGreen, "\n** All Shuhos: ")
 	for index, entry := range entries {
 		fmt.Printf("%d: %s\n", index, entry.String())
 	}
