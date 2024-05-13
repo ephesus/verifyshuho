@@ -61,6 +61,8 @@ type InvoiceEntry struct {
 }
 
 // stuct methods
+
+// signature doesn't include dates
 func (e InvoiceEntry) signature() string {
 	return fmt.Sprintf("%s %s %s", e.ICaseNum, e.IType, e.IWordCount)
 }
@@ -536,7 +538,7 @@ func parseInvoice(f *excelize.File) []Entry {
 		if len(row) > 5 {
 			ie.rowNum = row[0]
 			ie.IDate = getDate(row[3])
-			ie.ICaseNum = row[1]
+			ie.ICaseNum = strings.ReplaceAll(row[1], ",", "")
 			ie.IType = row[2]
 			tmp := strings.ReplaceAll(row[4], ",", "")
 			ie.IWordCount = strings.ReplaceAll(tmp, " ", "")
@@ -629,7 +631,7 @@ func parseShuho(f *excelize.File) []Entry {
 			}
 
 			se.SDate = getDate(row[0])
-			se.SCaseNum = row[1]
+			se.SCaseNum = strings.ReplaceAll(row[1], ",", "")
 			se.SType = row[2]
 			tmp := strings.ReplaceAll(row[3], ",", "")
 			se.SCWordCount = strings.ReplaceAll(tmp, " ", "")
