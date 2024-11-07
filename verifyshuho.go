@@ -224,7 +224,7 @@ func main() {
 	ensureRatesAreCorrect(invoiceEntries)
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
 	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
-	ensureShuhoEntriesAreInShuho(shuhoEntries, invoiceEntries)
+	ensureShuhoEntriesAreInInvoice(shuhoEntries, invoiceEntries)
 
 	p := message.NewPrinter(language.English)
 
@@ -414,7 +414,7 @@ func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
 	}
 }
 
-func ensureShuhoEntriesAreInShuho(sentries []Entry, ientries []Entry) {
+func ensureShuhoEntriesAreInInvoice(sentries []Entry, ientries []Entry) {
 	scopedShuhoEntries := getScopedShuho(sentries, ientries)
 	var totalerrors, copies int
 
