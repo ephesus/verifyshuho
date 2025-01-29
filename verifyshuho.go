@@ -64,7 +64,7 @@ type InvoiceEntry struct {
 
 // signature doesn't include dates
 func (e InvoiceEntry) signature() string {
-	return fmt.Sprintf("%s %s %s", e.ICaseNum, e.IType, e.IWordCount)
+	return fmt.Sprintf("%s %s %s %s", e.ICaseNum, e.IDate, e.IType, e.IWordCount)
 }
 
 func (e InvoiceEntry) String() string {
@@ -117,7 +117,7 @@ func getShuhoEntryWordCount(e ShuhoEntry) string {
 func (e ShuhoEntry) signature() string {
 	wordcount := getShuhoEntryWordCount(e)
 
-	return fmt.Sprintf("%s %s %s", e.SCaseNum, e.SType, wordcount)
+	return fmt.Sprintf("%s %s %s %s", e.SCaseNum, e.SDate, e.SType, wordcount)
 }
 
 func (e ShuhoEntry) String() string {
