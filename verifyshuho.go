@@ -58,17 +58,18 @@ type InvoiceEntry struct {
 	IType      string
 	IWordCount string
 	rate       string
+	IAuthor    string
 }
 
 // stuct methods
 
 // signature doesn't include dates
 func (e InvoiceEntry) signature() string {
-	return fmt.Sprintf("%s %s %s %s", e.ICaseNum, e.IDate, e.IType, e.IWordCount)
+	return fmt.Sprintf("%s %s %s %s %s", e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.IAuthor)
 }
 
 func (e InvoiceEntry) String() string {
-	return fmt.Sprintf("%s, %s, %s, %s, %s, %s", e.rowNum, e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.rate)
+	return fmt.Sprintf("%s, %s, %s, %s, %s, %s, %s", e.rowNum, e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.rate, e.IAuthor)
 }
 
 func (e InvoiceEntry) Rate() string {
@@ -85,6 +86,10 @@ func (e InvoiceEntry) WordCount() string {
 
 func (e InvoiceEntry) Type() string {
 	return e.IType
+}
+
+func (e InvoiceEntry) Author() string {
+	return e.IAuthor
 }
 
 type ShuhoEntry struct {
@@ -117,7 +122,7 @@ func getShuhoEntryWordCount(e ShuhoEntry) string {
 func (e ShuhoEntry) signature() string {
 	wordcount := getShuhoEntryWordCount(e)
 
-	return fmt.Sprintf("%s %s %s %s", e.SCaseNum, e.SDate, e.SType, wordcount)
+	return fmt.Sprintf("%s %s %s %s %s", e.SCaseNum, e.SDate, e.SType, wordcount, e.SAuthor)
 }
 
 func (e ShuhoEntry) String() string {
@@ -543,6 +548,7 @@ func parseInvoice(f *excelize.File) []Entry {
 			tmp := strings.ReplaceAll(row[4], ",", "")
 			ie.IWordCount = strings.ReplaceAll(tmp, " ", "")
 			ie.rate = row[5]
+			ie.IAuthor = row[7]
 		}
 
 		entries = append(entries, ie)
