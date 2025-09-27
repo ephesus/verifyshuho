@@ -86,8 +86,8 @@ func main() {
 	shuhoFileName := os.Args[1]
 	invoiceFileName := os.Args[2]
 
-	var shuhoEntries []ShuhoEntry
-	var invoiceEntries []InvoiceEntry
+	var shuhoEntries []CaseEntry
+	var invoiceEntries []CaseEntry
 
 	greeting()
 
@@ -138,8 +138,8 @@ func main() {
 	return
 }
 
-func parseInvoice(f *excelize.File) []InvoiceEntry {
-	entries := []InvoiceEntry{}
+func parseInvoice(f *excelize.File) []CaseEntry {
+	entries := []CaseEntry{}
 	var sheetName string
 
 	for index, name := range f.GetSheetList() {
@@ -198,8 +198,8 @@ func parseInvoice(f *excelize.File) []InvoiceEntry {
 	return entries
 }
 
-func parseShuho(f *excelize.File) []ShuhoEntry {
-	entries := []ShuhoEntry{}
+func parseShuho(f *excelize.File) []CaseEntry {
+	entries := []CaseEntry{}
 
 	for index, name := range f.GetSheetList() {
 		fmt.Println("INVOICE SHEET NAME", index, name)
