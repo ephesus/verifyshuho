@@ -44,6 +44,7 @@ var translationsf *bool
 // entry signatures are Date, Casenum, Type, Wordcount
 type Entry interface {
 	signature() string
+	Casenum() string
 	String() string
 	Type() string
 	Date() time.Time
@@ -68,24 +69,28 @@ func (e InvoiceEntry) signature() string {
 	return fmt.Sprintf("%s %s %s %s %s", e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.IAuthor)
 }
 
+func (e InvoiceEntry) Casenum() string {
+	return fmt.Sprintf("%s", e.ICaseNum)
+}
+
 func (e InvoiceEntry) String() string {
 	return fmt.Sprintf("%s, %s, %s, %s, %s, %s, %s", e.rowNum, e.ICaseNum, e.IDate, e.IType, e.IWordCount, e.rate, e.IAuthor)
 }
 
-func (e InvoiceEntry) Rate() string {
-	return e.rate
+func (e InvoiceEntry) Type() string {
+	return e.IType
 }
 
 func (e InvoiceEntry) Date() time.Time {
 	return e.IDate
 }
 
-func (e InvoiceEntry) WordCount() string {
-	return e.IWordCount
+func (e InvoiceEntry) Rate() string {
+	return e.rate
 }
 
-func (e InvoiceEntry) Type() string {
-	return e.IType
+func (e InvoiceEntry) WordCount() string {
+	return e.IWordCount
 }
 
 func (e InvoiceEntry) Author() string {
@@ -131,6 +136,14 @@ func (e ShuhoEntry) String() string {
 	return fmt.Sprintf("%v, %s, %s, %s, %s", e.SDate, e.SCaseNum, e.SType, wordcount, e.SAuthor)
 }
 
+func (e ShuhoEntry) Casenum() string {
+	return fmt.Sprintf("%s", e.SCaseNum)
+}
+
+func (e ShuhoEntry) Type() string {
+	return e.SType
+}
+
 func (e ShuhoEntry) Date() time.Time {
 	return e.SDate
 }
@@ -141,10 +154,6 @@ func (e ShuhoEntry) Rate() string {
 
 func (e ShuhoEntry) WordCount() string {
 	return getShuhoEntryWordCount(e)
-}
-
-func (e ShuhoEntry) Type() string {
-	return e.SType
 }
 
 // print error for structs satisfying Entry interface
@@ -227,6 +236,10 @@ func main() {
 	fmt.Println("")
 
 	ensureRatesAreCorrect(invoiceEntries)
+	ensureValidCaseNumber(invoiceEntries)
+	ensureValidCaseNumber(shuhoEntries)
+	ensureALQandALPmatchNumber(invoiceEntries)
+	ensureALQandALPmatchNumber(shuhoEntries)
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
 	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
 	ensureShuhoEntriesAreInInvoice(shuhoEntries, invoiceEntries)
@@ -373,6 +386,42 @@ func ensureRatesAreCorrect(entries []Entry) {
 		fmt.Printf("\033[1;31mERROR:\033[0m Rate is incorrect (Row %s)\n", entry.String())
 	} else {
 		showCheckSuccess("Invoice rates are correct")
+	}
+}
+
+func ensureALQandALPmatchNumber(entries []Entry) {
+	var entry Entry
+	var errors int = 0
+
+	for _, entry := range entries {
+		entry.signature()
+	}
+
+	if errors != 0 {
+		fmt.Printf("\033[1;31mERROR:\031[0m Case Number does not Match ALP or ALQ range: entry (Row %s)\n", entry.Casenum())
+	} else {
+		showCheckSuccess("All case numbers match ALQ or ALP")
+	}
+}
+
+func ensureValidCaseNumber(entries []Entry) {
+	var entry Entry
+	var errors int = 0
+	var casenum string
+
+	for _, entry = range entries {
+		casenum = entry.Casenum()
+
+		//check that ALQ cases have a casenum < 30000
+		match, _ := regexp.MatchString(`^(?i)(ALP|ALQ|OSQ|OSP|ALI)-\d{5}$`, casenum)
+		if !match {
+			fmt.Printf("\033[1;33mWARNING:\033[0m Case Number not Valid Format: entry (Row %s)\n", casenum)
+			errors++
+		}
+	}
+
+	if errors == 0 {
+		showCheckSuccess("All case numbers match ALQ or ALP")
 	}
 }
 
