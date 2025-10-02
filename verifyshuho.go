@@ -222,22 +222,22 @@ func main() {
 	invoiceEntries = parseInvoice(finvoice)
 	shuhoEntries = parseShuho(fshuho)
 
-	if shuhoEntries == nil || invoiceEntries == nil {
+	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
+	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
+	fmt.Println("")
+
+	if len(shuhoEntries) == 0 || len(invoiceEntries) == 0 {
 		fmt.Println("Empty Shuho or Invoice Entries variable")
 		return
 	}
 
-	fmt.Printf("Invoice Entries: %d\n", len(invoiceEntries))
-	fmt.Printf("Shuho Entries: %d\n", len(shuhoEntries))
-	fmt.Println("")
 	fmt.Printf("Total Translations: \033[1;36m%d\033[0m\n", sumOfTranslations(invoiceEntries))
 	fmt.Printf("Total Checks: %d\n", sumOfChecks(invoiceEntries))
 
 	fmt.Println("")
 
 	ensureRatesAreCorrect(invoiceEntries)
-	ensureValidCaseNumber(invoiceEntries)
-	ensureValidCaseNumber(shuhoEntries)
+	ensureValidCaseFormat(invoiceEntries)
 	ensureALQandALPmatchNumber(invoiceEntries)
 	ensureALQandALPmatchNumber(shuhoEntries)
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
@@ -404,7 +404,7 @@ func ensureALQandALPmatchNumber(entries []Entry) {
 	}
 }
 
-func ensureValidCaseNumber(entries []Entry) {
+func ensureValidCaseFormat(entries []Entry) {
 	var entry Entry
 	var errors int = 0
 	var casenum string
