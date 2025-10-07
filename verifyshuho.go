@@ -239,7 +239,6 @@ func main() {
 	ensureRatesAreCorrect(invoiceEntries)
 	ensureValidCaseFormat(invoiceEntries)
 	ensureALQandALPmatchNumber(invoiceEntries)
-	ensureALQandALPmatchNumber(shuhoEntries)
 	ensureNoDuplicateInvoiceEntries(invoiceEntries)
 	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
 	ensureShuhoEntriesAreInInvoice(shuhoEntries, invoiceEntries)
@@ -390,17 +389,37 @@ func ensureRatesAreCorrect(entries []Entry) {
 }
 
 func ensureALQandALPmatchNumber(entries []Entry) {
-	var entry Entry
 	var errors int = 0
 
 	for _, entry := range entries {
-		entry.signature()
-	}
+		regex := *regexp.MustCompile(`(?s)(\p{Letter}+)-(\d+)`)
+		res := regex.FindAllStringSubmatch(entry.Casenum(), -1)
 
-	if errors != 0 {
-		fmt.Printf("\033[1;31mERROR:\031[0m Case Number does not Match ALP or ALQ range: entry (Row %s)\n", entry.Casenum())
-	} else {
-		showCheckSuccess("All case numbers match ALQ or ALP")
+		if res == nil {
+			continue
+		}
+
+		for i := range res {
+			itype := res[i][1]
+			inumber, _ := strconv.Atoi(res[i][2])
+
+			switch itype {
+			case "ALP":
+				if inumber < 40000 {
+					errors++
+					fmt.Printf("\033[1;31mERROR:\033[0m Number too low for ALP: (%s)\n", entry.Casenum())
+				}
+			case "ALQ":
+				if inumber > 39999 {
+					fmt.Printf("\033[1;31mERROR:\033[0m Number too high for ALQ: (%s)\n", entry.Casenum())
+					errors++
+				}
+			}
+		}
+
+	}
+	if errors == 0 {
+		fmt.Println("OKAY... All Cases match ALQ or ALP and number")
 	}
 }
 
@@ -421,7 +440,9 @@ func ensureValidCaseFormat(entries []Entry) {
 	}
 
 	if errors == 0 {
-		showCheckSuccess("All case numbers match ALQ or ALP")
+		showCheckSuccess("All Case numbers are a valid format")
+	} else {
+		fmt.Println("CASE NUMBER PROBLEM")
 	}
 }
 
