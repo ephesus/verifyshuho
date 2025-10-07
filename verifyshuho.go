@@ -14,6 +14,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -191,8 +192,6 @@ func main() {
 	var shuhoEntries []Entry
 	var invoiceEntries []Entry
 
-	greeting()
-
 	fshuho, err := excelize.OpenFile(shuhoFileName)
 	if err != nil {
 		fmt.Println(err)
@@ -236,12 +235,21 @@ func main() {
 
 	fmt.Println("")
 
-	ensureRatesAreCorrect(invoiceEntries)
-	ensureValidCaseFormat(invoiceEntries)
-	ensureALQandALPmatchNumber(invoiceEntries)
-	ensureNoDuplicateInvoiceEntries(invoiceEntries)
-	ensureInvoiceEntriesAreInShuho(shuhoEntries, invoiceEntries)
-	ensureShuhoEntriesAreInInvoice(shuhoEntries, invoiceEntries)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go ensureRatesAreCorrect(&wg, invoiceEntries)
+	wg.Add(1)
+	go ensureValidCaseFormat(&wg, invoiceEntries)
+	wg.Add(1)
+	go ensureALQandALPmatchNumber(&wg, invoiceEntries)
+	wg.Add(1)
+	go ensureNoDuplicateInvoiceEntries(&wg, invoiceEntries)
+	wg.Add(1)
+	go ensureInvoiceEntriesAreInShuho(&wg, shuhoEntries, invoiceEntries)
+	wg.Add(1)
+	go ensureShuhoEntriesAreInInvoice(&wg, shuhoEntries, invoiceEntries)
+
+	wg.Wait()
 
 	p := message.NewPrinter(language.English)
 
@@ -365,9 +373,11 @@ func thisYearOrLastYear(theDate time.Time) time.Time {
 	return time.Date(MyYear, theDate.Month(), theDate.Day(), 0, 0, 0, theDate.Nanosecond(), theDate.Location())
 }
 
-func ensureRatesAreCorrect(entries []Entry) {
+func ensureRatesAreCorrect(wg *sync.WaitGroup, entries []Entry) {
 	var entry Entry
 	var errors int
+
+	defer wg.Done()
 
 	for _, entry = range entries {
 		if entry.Rate() == "18" {
@@ -388,8 +398,10 @@ func ensureRatesAreCorrect(entries []Entry) {
 	}
 }
 
-func ensureALQandALPmatchNumber(entries []Entry) {
+func ensureALQandALPmatchNumber(wg *sync.WaitGroup, entries []Entry) {
 	var errors int = 0
+
+	defer wg.Done()
 
 	for _, entry := range entries {
 		regex := *regexp.MustCompile(`(?s)(\p{Letter}+)-(\d+)`)
@@ -423,10 +435,12 @@ func ensureALQandALPmatchNumber(entries []Entry) {
 	}
 }
 
-func ensureValidCaseFormat(entries []Entry) {
+func ensureValidCaseFormat(wg *sync.WaitGroup, entries []Entry) {
 	var entry Entry
 	var errors int = 0
 	var casenum string
+
+	defer wg.Done()
 
 	for _, entry = range entries {
 		casenum = entry.Casenum()
@@ -446,9 +460,11 @@ func ensureValidCaseFormat(entries []Entry) {
 	}
 }
 
-func ensureNoDuplicateInvoiceEntries(entries []Entry) {
+func ensureNoDuplicateInvoiceEntries(wg *sync.WaitGroup, entries []Entry) {
 	var entry Entry
 	var copies int
+
+	defer wg.Done()
 
 	for _, entry = range entries {
 		copies = 0
@@ -466,9 +482,11 @@ func ensureNoDuplicateInvoiceEntries(entries []Entry) {
 	}
 }
 
-func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
+func ensureInvoiceEntriesAreInShuho(wg *sync.WaitGroup, sentries []Entry, ientries []Entry) {
 	scopedShuhoEntries := getScopedShuho(sentries, ientries)
 	var totalerrors, copies int
+
+	defer wg.Done()
 
 	for _, ientry := range ientries {
 		copies = 0
@@ -489,9 +507,11 @@ func ensureInvoiceEntriesAreInShuho(sentries []Entry, ientries []Entry) {
 	}
 }
 
-func ensureShuhoEntriesAreInInvoice(sentries []Entry, ientries []Entry) {
+func ensureShuhoEntriesAreInInvoice(wg *sync.WaitGroup, sentries []Entry, ientries []Entry) {
 	scopedShuhoEntries := getScopedShuho(sentries, ientries)
 	var totalerrors, copies int
+
+	defer wg.Done()
 
 	for _, sentry := range scopedShuhoEntries {
 		copies = 0
